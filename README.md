@@ -165,6 +165,52 @@ That is the engine's one unburnt drop, and it is stated here rather than hidden.
 
 ---
 
+## The Cantor Rainbow
+
+→ **[rainbow.html](rainbow.html)** · live:
+**https://jessebrown1980.github.io/The-Brown-Light-erdos-Engine-block-powered-by-light/rainbow.html**
+
+Every surviving exponent carries its ternary history `d₁d₂…dₖ` — digits 0 and 1 only,
+because the 2s are what burned. Read as a ternary fraction `x = 0.d₁d₂…dₖ`, each survivor
+owns one band of a single spectrum laid out in thirds:
+
+```
+[0, 1/3)     sound            20 Hz → 20 kHz
+   c         the jump to the speed of light
+[1/3, 2/3)   light as seen    750 nm → 380 nm
+[2/3, 1)     not seen         UV · X · γ   — holds only the exhaust
+```
+
+Each stroke splits every band in three and the top third goes dark: that is the burn,
+the colour break. The bands that remain converge on a Cantor set of dimension
+`log 2 / log 3`. Colour is read through the devil's staircase — the same digits read in
+binary — so the dust spreads across the whole rainbow while every gap stays exactly where
+the arithmetic puts it. Each burn rings down as a damped sine at its band's pitch, longer
+the deeper it burned.
+
+The colour a branch burns in is its parent's own next ternary digit,
+`burned lift = (2 − d) mod 3` (on survivors `c ≡ 1 mod 3`, so lift `j` adds exactly `j`
+to the new digit).
+
+**MEASURED** — `rainbow_check.py`, strokes 1–12, exact integers:
+
+```
+GATE  G1  counts           2ᵏ survive, 2ᵏ⁻¹ burn                 PASS
+GATE  G2  one burn         exactly one child of three has digit 2  PASS
+GATE  G3  birth colour     burned lift = (2 − parent digit) mod 3 PASS
+GATE  G4  gap              burned bands disjoint from survivors   PASS
+GATE  G5  controls         n = 0, 2, 8 survive every stroke       PASS
+GATE  G6  disjoint         survivor bands pairwise disjoint       PASS
+split  sound / seen / unseen  =  2ᵏ⁻¹ / 2ᵏ⁻¹ / 0  at every stroke
+```
+
+Design: Jesse Daniel Brown — a gradiated wave, sound first, then the speed of light,
+the colours as seen, then the wavelengths not seen; the brakes are the colour breaks, and
+the predictors belong to the colour they were born in (Book of Laws, voice-07, turns
+676–680).
+
+---
+
 ## Controls
 
 ```

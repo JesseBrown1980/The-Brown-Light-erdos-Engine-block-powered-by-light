@@ -1,0 +1,294 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Cantor Rainbow</title>
+<style>
+:root{--bg:#06060a;--fg:#e9e9f0;--dim:#7f7f8f;--line:#191921;--acc:#a78bfa;--fire:#fff3c4}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);padding:24px 16px;
+     font:14px/1.6 ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+main{max-width:1000px;margin:0 auto}
+h1{font-size:20px;margin:0 0 4px;color:var(--acc);letter-spacing:-.2px}
+.sub{color:var(--dim);max-width:84ch;margin-bottom:18px}
+.sub b{color:var(--fg)}
+button{background:var(--acc);color:#0b0b10;border:0;border-radius:7px;margin:0 6px 6px 0;
+       padding:12px 22px;font:600 14px ui-monospace,monospace;cursor:pointer}
+button:hover{filter:brightness(1.12)}
+button.ghost{background:#16161f;color:var(--fg);border:1px solid var(--line)}
+button.on{background:#fff3c4;color:#0b0b10}
+h2{font-size:11px;text-transform:uppercase;letter-spacing:1.6px;color:var(--acc);
+   margin:24px 0 8px;font-weight:600}
+canvas{display:block;width:100%;background:#0a0a11;border:1px solid var(--line);border-radius:10px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:14px}
+.panel{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:#0b0b12}
+.row{display:flex;justify-content:space-between;gap:12px;padding:2px 0;border-bottom:1px dotted #17171f}
+.row:last-child{border:0}
+.k{color:var(--dim)} .v{font-variant-numeric:tabular-nums;text-align:right}
+.pass{color:#7ee2a8} .failc{color:#ff6b6b} .fire{color:var(--fire)} .acc{color:var(--acc)}
+footer{margin-top:34px;color:var(--dim);font-size:12px;border-top:1px solid var(--line);
+       padding-top:14px;max-width:88ch}
+code{color:#e0b080}
+</style>
+<main>
+<h1>The Cantor Rainbow</h1>
+<div class="sub">
+Every surviving exponent carries its ternary history <code>d₁d₂…dₖ</code>, digits
+<b>0 or 1 only</b> — the 2s are what burned. Read that history as a ternary fraction
+<code>x = 0.d₁d₂…dₖ</code> and each survivor owns one band of a single spectrum:
+<b>sound</b>, then the jump to <b>c</b>, then <b>light as seen</b>, then the
+<b>wavelengths not seen</b>. Each stroke splits every band in three; the top third goes
+dark — that is the burn, the colour break — and its exhaust rings down. The bands that
+remain are a Cantor set, dimension <code>log 2 / log 3</code>.
+</div>
+
+<button id="go">START THE RAINBOW</button>
+<button id="step" class="ghost">SINGLE STROKE</button>
+<button id="snd" class="ghost">SOUND: OFF</button>
+<button id="reset" class="ghost">RESET</button>
+
+<h2>the ringdown · this stroke's burns, one damped wave each</h2>
+<canvas id="wave" height="150"></canvas>
+
+<h2>the spectrum · one row per stroke · bright = survives · dark = burned</h2>
+<canvas id="spec" height="420"></canvas>
+
+<div class="grid" style="margin-top:14px">
+  <div class="panel" id="live"></div>
+  <div class="panel" id="gates"></div>
+</div>
+
+<footer>
+<b>Jesse Daniel Brown (OP-JESSE)</b> — the design: a gradiated wave, sound first, then
+the speed of light, the colours as seen, then the wavelengths not seen; the brakes are
+the colour breaks, and the predictors belong to the colour they were born in (Book of
+Laws, voice-07, turns 676–680).<br>
+Every survivor, burn and band edge is computed with exact integers (BigInt) over complete
+residue systems; numbers become colour and sound only at the last step. The colour a branch
+burns in is its parent's own next ternary digit: <code>burned lift = (2 − d) mod 3</code>.
+Receipt: <code>python rainbow_check.py</code>. Prior work on the underlying tree:
+Narkiewicz (1980), Lagarias (2009), Saye (2022) — see the README.
+</footer>
+</main>
+
+<script>
+const $=id=>document.getElementById(id);
+const KMAX=12;
+
+/* ---------- exact engine (BigInt) ---------- */
+function modpow(b,e,m){let r=1n;b%=m;while(e>0n){if(e&1n)r=r*b%m;b=b*b%m;e>>=1n;}return r;}
+const P3=[1n];for(let i=1;i<=KMAX+2;i++)P3.push(P3[i-1]*3n);
+
+let K, surv, rows, lastBurns, flashT;
+function reset(){
+  K=0;
+  surv=[{n:0n,num:0n,r:0,cb:0n}];            // after stroke 0: n=0 survives (2^0=1), n=1 burns by parity
+  rows=[{k:0,bands:[0n],burns:[],note:"parity: n = 1 burns (2¹ = 2)"}];
+  lastBurns=[];flashT=0;
+}
+function stroke(){
+  if(K>=KMAX)return null;
+  const k=K+1, pPrev=2n*P3[k-1], mod=P3[k+1];
+  const next=[], burns=[];
+  for(const s of surv){
+    const dpar=(modpow(2n,s.n,mod)/P3[k])%3n;
+    for(let j=0n;j<3n;j++){
+      const n=s.n+j*pPrev;
+      const d=(modpow(2n,n,mod)/P3[k])%3n;
+      const cdepth=BigInt(Math.max(0,k-2));          // bits held by the parent
+      if(d===2n) burns.push({n,num:3n*s.num+2n,j,dpar,k1:k===1,
+          r:s.r,c:k===1?0:Math.min(.9999,Number(s.cb+1n)/Number(1n<<cdepth))});  // staircase is flat at the band top across the gap
+      else if(k===1) next.push({n,num:d,r:Number(d),cb:0n});
+      else next.push({n,num:3n*s.num+d,r:s.r,cb:2n*s.cb+d});
+    }
+  }
+  surv=next;K=k;
+  rows.push({k,bands:next.map(s=>s.num),burns:burns.map(b=>b.num),note:""});
+  lastBurns=burns;flashT=performance.now();
+  return {k,next,burns};
+}
+
+/* ---------- the spectrum: sound | c | seen | unseen ---------- */
+function wl2rgb(nm){            // visible wavelength -> rgb (Bruton)
+  let r=0,g=0,b=0;
+  if(nm<440){r=-(nm-440)/60;b=1}else if(nm<490){g=(nm-440)/50;b=1}
+  else if(nm<510){g=1;b=-(nm-510)/20}else if(nm<580){r=(nm-510)/70;g=1}
+  else if(nm<645){r=1;g=-(nm-645)/65}else{r=1}
+  let f=nm<420?.3+.7*(nm-380)/40:nm>700?.3+.7*(780-nm)/80:1;
+  return [r*f,g*f,b*f].map(c=>Math.round(255*Math.pow(c,.8)));
+}
+function col(x){                // x in [0,1)
+  if(x<1/3){                    // sound: no colour, a pearl gradient by pitch
+    const t=x*3, l=60+Math.round(150*t);
+    return [l+Math.round(20*Math.sin(t*9)),l,l+Math.round(30*t)];
+  }
+  if(x<2/3){                    // light as seen: 750 nm (red) -> 380 nm (violet)
+    const t=(x-1/3)*3; return wl2rgb(750-370*t);
+  }
+  const t=(x-2/3)*3;            // unseen: ultraviolet -> X -> gamma, fading out of sight
+  return [Math.round(120-90*t),Math.round(40-30*t),Math.round(170-120*t)];
+}
+const rgb=a=>"rgb("+a[0]+","+a[1]+","+a[2]+")";
+/* devil's staircase: ternary place -> binary reading. Digits 0,1 become bits 0,1; a
+   digit 2 (a gap, a burn) holds the staircase flat at the top of the band below it. */
+function stair(x){
+  const r=Math.min(2,Math.floor(x*3));
+  if(r===2)return [2,(x*3-2)];          // the unseen third: plain linear tint
+  let y=x*3-r,c=0,b=.5;
+  for(let i=0;i<30;i++){y*=3;const d=Math.floor(y);y-=d;
+    if(d===2){c+=2*b;break;} c+=d*b;b/=2;}
+  return [r,Math.min(c,.9999)];
+}
+function colRC(r,c){return col((r+c)/3);}         // region + staircase value -> colour
+function freqRC(r,c){return 110*Math.pow(2,2*r+2*c)}  // 110 Hz .. 7 kHz, log, for the ear
+let stairW=0,stairCols=[];
+function stairCache(W){if(W===stairW)return;stairW=W;stairCols=[];
+  for(let px=0;px<W;px++){const [r,c]=stair((px+.5)/W);stairCols.push(rgb(colRC(r,c)));}}
+
+/* ---------- drawing ---------- */
+const spec=$("spec"),sx=spec.getContext("2d"),wave=$("wave"),wx=wave.getContext("2d");
+function fit(c,h){const w=c.clientWidth*devicePixelRatio;c.width=w;c.height=h*devicePixelRatio;}
+function drawSpec(now){
+  fit(spec,420);const W=spec.width,H=spec.height,d=devicePixelRatio;stairCache(W);
+  const top=10*d,axis=74*d,rowH=(H-top-axis)/(KMAX+1);
+  sx.clearRect(0,0,W,H);
+  // faint full spectrum behind every row
+  for(let px=0;px<W;px+=2){sx.fillStyle=stairCols[px];sx.globalAlpha=.07;sx.fillRect(px,top,2,rowH*(KMAX+1));}
+  sx.globalAlpha=1;
+  const age=Math.min(1,(now-flashT)/1400);
+  for(const r of rows){
+    const y=top+r.k*rowH, den=Number(P3[r.k]);
+    const reveal=(r.k===K)?Math.min(1,(now-flashT)/600):1;
+    for(const num of r.bands){
+      const x0=Number(num)/den, x1=(Number(num)+1)/den;
+      if(x0>reveal)continue;
+      const a=Math.floor(x0*W), w=Math.max(1,Math.ceil((x1-x0)*W));
+      for(let px=a;px<Math.min(W,a+w);px+=1){
+        sx.fillStyle=stairCols[Math.min(W-1,w<=2?Math.floor((x0+x1)/2*W):px)];
+        sx.fillRect(px,y+1,1,rowH-2);}
+    }
+    if(r.k===K&&r.burns.length){       // the colour breaks: burned thirds flash then go dark
+      for(const num of r.burns){
+        const x0=Number(num)/den, w=Math.max(1,Math.ceil(W/den));
+        const a=Math.floor(x0*W);
+        sx.fillStyle="rgba(255,243,196,"+(0.85*(1-age))+")";sx.fillRect(a,y+1,w,rowH-2);
+      }
+    }
+    sx.fillStyle="#6c6c7c";sx.font=(10*d)+"px ui-monospace";sx.textBaseline="middle";
+    sx.textAlign="right";sx.fillText("k="+r.k,W-6*d,y+rowH/2);sx.textAlign="left";
+  }
+  // thirds dividers, c line
+  const yA=top+rowH*(KMAX+1);
+  for(const t of [1/3,2/3]){
+    sx.strokeStyle=t===1/3?"#ffffff":"#3a3a4a";sx.lineWidth=(t===1/3?1.5:1)*d;
+    sx.beginPath();sx.moveTo(t*W,top);sx.lineTo(t*W,yA+8*d);sx.stroke();
+  }
+  // axis bar
+  for(let px=0;px<W;px++){sx.fillStyle=stairCols[px];sx.fillRect(px,yA+10*d,1,12*d);}
+  sx.fillStyle="#9a9aab";sx.font=(11*d)+"px ui-monospace";sx.textBaseline="top";
+  const lab=[[0.005,"20 Hz"],[0.17,"sound → 20 kHz"],[1/3+0.006,"c"],[0.348,"750 nm"],
+             [0.45,"light as seen"],[0.585,"380 nm"],[2/3+0.006,"UV · X · γ"],[0.84,"not seen"]];
+  const narrow=W/d<640;
+  const labs=narrow?[[0.005,"sound"],[1/3+0.006,"c · seen"],[2/3+0.006,"not seen"]]:lab;
+  for(const [x,t] of labs)sx.fillText(t,x*W,yA+28*d);
+  // controls n = 0, 2, 8 on the axis
+  const per=2n*P3[K], have=new Map(surv.map(s=>[s.n%per,s.num]));
+  [[0n,"0"],[2n,"2"],[8n,"8"]].forEach(([c,t],i)=>{
+    if(!have.has(c%per))return;
+    const x=Number(have.get(c%per))/Number(P3[K]);
+    sx.fillStyle="#fff3c4";sx.beginPath();sx.moveTo(x*W,yA+8*d);
+    sx.lineTo(x*W-4*d,yA+1*d);sx.lineTo(x*W+4*d,yA+1*d);sx.fill();
+    sx.fillText("n="+t,x*W+3*d,yA+44*d+(i%2)*12*d);
+  });
+}
+function voices(){               // burns heard / drawn: evenly strided, at most 24
+  const b=lastBurns, m=Math.min(24,b.length), out=[];
+  for(let i=0;i<m;i++){const s=b[Math.floor(i*b.length/m)];
+    out.push(s.k1?{f:freqRC(2,.5),c:rgb(colRC(2,.5)),ph:i}:
+      {f:freqRC(s.r,s.c),c:rgb(colRC(s.r,s.c)),ph:i});}
+  return out;
+}
+function drawWave(now){
+  fit(wave,150);const W=wave.width,H=wave.height,d=devicePixelRatio;
+  wx.clearRect(0,0,W,H);
+  wx.strokeStyle="#191921";wx.beginPath();wx.moveTo(0,H/2);wx.lineTo(W,H/2);wx.stroke();
+  const vs=voices(); if(!vs.length){
+    wx.fillStyle="#5c5c6c";wx.font=(12*d)+"px ui-monospace";
+    wx.fillText("press a stroke — each burn rings down here",14*d,H/2-10*d);return;}
+  const T=2.0, tau=0.12+0.11*K;              // deeper burns ring longer
+  const elapsed=(now-flashT)/1000;
+  for(let px=1;px<W;px++){
+    const t0=(px-1)/W*T,t1=px/W*T;
+    let y0=0,y1=0;
+    for(const v of vs){const f=v.f/40;         // slowed 40x so the eye can follow it
+      y0+=Math.exp(-t0/tau)*Math.sin(2*Math.PI*f*t0+v.ph);
+      y1+=Math.exp(-t1/tau)*Math.sin(2*Math.PI*f*t1+v.ph);}
+    const s=(H*0.42)/Math.sqrt(vs.length);
+    wx.strokeStyle=vs[Math.floor(px/W*vs.length)].c;
+    wx.globalAlpha=t1<elapsed?1:.25;wx.lineWidth=1.5*d;
+    wx.beginPath();wx.moveTo(px-1,H/2-y0*s);wx.lineTo(px,H/2-y1*s);wx.stroke();
+  }
+  wx.globalAlpha=1;wx.fillStyle="#7f7f8f";wx.font=(11*d)+"px ui-monospace";
+  wx.fillText("stroke "+K+" · "+lastBurns.length+" burns · τ = "+tau.toFixed(2)+" s · "+vs.length+" voices",10*d,14*d);
+}
+
+/* ---------- sound: one damped sine per voice, the ringdown ---------- */
+let ac=null,soundOn=false;
+function ring(){
+  if(!soundOn||!lastBurns.length)return;
+  if(!ac)ac=new (window.AudioContext||window.webkitAudioContext)();
+  const vs=voices(),t=ac.currentTime,tau=0.12+0.11*K,g0=0.22/Math.sqrt(vs.length);
+  for(const v of vs){
+    const o=ac.createOscillator(),g=ac.createGain();
+    o.type="sine";o.frequency.value=v.f;
+    g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(g0,t+0.008);
+    g.gain.setTargetAtTime(0,t+0.008,tau);
+    o.connect(g).connect(ac.destination);o.start(t);o.stop(t+0.008+tau*7);
+  }
+}
+
+/* ---------- panels ---------- */
+const R=(c,k,v,cls="")=>{const r=document.createElement("div");r.className="row";
+  r.innerHTML='<span class="k"></span><span class="v '+cls+'"></span>';
+  r.children[0].textContent=k;r.children[1].textContent=v;c.append(r);};
+function panels(){
+  const L=$("live");L.innerHTML="";
+  const den=P3[K];let snd=0,seen=0,uns=0;
+  for(const s of surv){const t=Number(3n*s.num/den);t===0?snd++:t===1?seen++:uns++;}
+  R(L,"stroke k",K);R(L,"period 2·3ᵏ",(2n*den).toLocaleString());
+  R(L,"survivors (bands)",surv.length.toLocaleString());
+  R(L,"burned this stroke",K?lastBurns.length.toLocaleString():"1 (parity)","fire");
+  R(L,"in sound / seen / unseen",snd+" / "+seen+" / "+uns);
+  R(L,"band width","1 / 3^"+K);
+  R(L,"dimension of the limit","log 2 / log 3 ≈ 0.6309","acc");
+  const G=$("gates");G.innerHTML="";
+  const per=2n*den, set=new Set(surv.map(s=>s.n%per));
+  const ctl=[0n,2n,8n].every(c=>set.has(c%per));
+  const cnt=surv.length===2**K && (K===0||lastBurns.length===2**(K-1));
+  const rule=lastBurns.every(b=>b.j===(2n-b.dpar+3n)%3n);
+  const nums=surv.map(s=>s.num).sort((a,b)=>a<b?-1:a>b?1:0);
+  let disj=true;for(let i=1;i<nums.length;i++)if(nums[i]<=nums[i-1])disj=false;
+  const sv=new Set(nums.map(String));const gap=lastBurns.every(b=>!sv.has(String(b.num)));
+  const P=(k,ok)=>R(G,k,ok?"PASS":"FAIL",ok?"pass":"failc");
+  P("counts 2ᵏ survive, 2ᵏ⁻¹ burn",cnt);
+  P("colour = (2 − parent digit) mod 3",rule);
+  P("burned bands are gaps",gap);
+  P("bands disjoint",disj);
+  P("controls n = 0, 2, 8 survive",ctl);
+  R(G,"unseen third holds","only the exhaust","acc");
+}
+
+/* ---------- loop ---------- */
+let running=false,acc=0,last=0;
+function fire(){if(stroke()){ring();panels();}else{running=false;$("go").textContent="START THE RAINBOW";}}
+function loop(ts){
+  if(!last)last=ts;const dt=(ts-last)/1000;last=ts;
+  if(running){acc+=dt;if(acc>2.2){acc=0;fire();}}
+  drawSpec(ts);drawWave(ts);requestAnimationFrame(loop);
+}
+$("go").onclick=e=>{running=!running;acc=2.2;e.target.textContent=running?"PAUSE":"START THE RAINBOW";};
+$("step").onclick=()=>fire();
+$("snd").onclick=e=>{soundOn=!soundOn;e.target.textContent="SOUND: "+(soundOn?"ON":"OFF");
+  e.target.classList.toggle("on",soundOn);if(soundOn){if(!ac)ac=new (window.AudioContext||window.webkitAudioContext)();ac.resume();}};
+$("reset").onclick=()=>{reset();running=false;$("go").textContent="START THE RAINBOW";panels();};
+reset();panels();requestAnimationFrame(loop);
+</script>
