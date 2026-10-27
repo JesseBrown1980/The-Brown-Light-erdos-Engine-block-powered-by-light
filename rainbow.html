@@ -63,8 +63,11 @@ the speed of light, the colours as seen, then the wavelengths not seen; the brak
 the colour breaks, and the predictors belong to the colour they were born in (Book of
 Laws, voice-07, turns 676–680).<br>
 Every survivor, burn and band edge is computed with exact integers (BigInt) over complete
-residue systems; numbers become colour and sound only at the last step. The colour a branch
-burns in is its parent's own next ternary digit: <code>burned lift = (2 − d) mod 3</code>.
+residue systems; numbers become colour and sound only at the last step. The burned child's
+new digit is always 2; which of its three lifts burns, <code>j = 0, 1, 2</code>, varies from parent
+to parent and is fixed by the parent's own next ternary digit <code>d</code>:
+<code>j = (2 − d) mod 3</code>. Colour and pitch come from each band's position on the spectrum;
+the ringdown is a sonification of the burns.
 Receipt: <code>python rainbow_check.py</code>. Prior work on the underlying tree:
 Narkiewicz (1980), Lagarias (2009), Saye (2022) — see the README.
 </footer>
@@ -270,7 +273,7 @@ function panels(){
   const sv=new Set(nums.map(String));const gap=lastBurns.every(b=>!sv.has(String(b.num)));
   const P=(k,ok)=>R(G,k,ok?"PASS":"FAIL",ok?"pass":"failc");
   P("counts 2ᵏ survive, 2ᵏ⁻¹ burn",cnt);
-  P("colour = (2 − parent digit) mod 3",rule);
+  P("burned lift j = (2 − parent digit) mod 3",rule);
   P("burned bands are gaps",gap);
   P("bands disjoint",disj);
   P("controls n = 0, 2, 8 survive",ctl);

@@ -15,7 +15,7 @@ Axis thirds:  [0,1/3) sound  |  [1/3,2/3) light as seen  |  [2/3,1) unseen.
 Gates, all exact integers:
   G1  counts           survivors after stroke k = 2^k, burned = 2^(k-1)
   G2  one burn         every parent has exactly one child with digit 2
-  G3  birth colour     burned lift j == (2 - parent's own digit k) mod 3
+  G3  burned lift      j == (2 - parent's own digit k) mod 3
   G4  gap              burned bands are disjoint from every survivor band
   G5  controls         n = 0, 2, 8 survive every stroke at their known positions
   G6  disjoint         survivor bands at each stroke are pairwise disjoint

@@ -188,16 +188,18 @@ binary — so the dust spreads across the whole rainbow while every gap stays ex
 the arithmetic puts it. Each burn rings down as a damped sine at its band's pitch, longer
 the deeper it burned.
 
-The colour a branch burns in is its parent's own next ternary digit,
-`burned lift = (2 − d) mod 3` (on survivors `c ≡ 1 mod 3`, so lift `j` adds exactly `j`
-to the new digit).
+The burned child's new digit is always 2. Which of the three lifts burns, `j ∈ {0, 1, 2}`,
+varies from parent to parent and is fixed by the parent's own next ternary digit `d`:
+`j = (2 − d) mod 3` (on survivors `c ≡ 1 mod 3`, so lift `j` adds exactly `j` to the new
+digit). It is a per-branch quantity, not a per-stroke one. Colour and pitch come from each
+band's position on the spectrum; the ringdown is a sonification of the burns.
 
 **MEASURED** — `rainbow_check.py`, strokes 1–12, exact integers:
 
 ```
 GATE  G1  counts           2ᵏ survive, 2ᵏ⁻¹ burn                 PASS
 GATE  G2  one burn         exactly one child of three has digit 2  PASS
-GATE  G3  birth colour     burned lift = (2 − parent digit) mod 3 PASS
+GATE  G3  burned lift      j = (2 − parent digit) mod 3          PASS
 GATE  G4  gap              burned bands disjoint from survivors   PASS
 GATE  G5  controls         n = 0, 2, 8 survive every stroke       PASS
 GATE  G6  disjoint         survivor bands pairwise disjoint       PASS
